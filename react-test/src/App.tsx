@@ -3,13 +3,15 @@ import ListGroup from "./components/ListGroup.tsx";
 import Alert from "./components/Alert.tsx";
 import Button from "./components/Button.tsx";
 import Like from "./components/Like.tsx";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import NavBar from "./components/NavBar.tsx";
 import { Cart } from "./components/Cart.tsx";
 import Form from "./components/Form.tsx";
 import ExpenseList from "./expense-tracker/components/ExpenseList.tsx";
 import ExpenseFilter from "./expense-tracker/components/ExpenseFilter.tsx";
 import ExpenseForm from "./expense-tracker/components/ExpenseForm.tsx";
+import useUsers from "./hooks/useUsers.ts";
+import userService, { User } from "./services/user-service.ts";
 
 function App() {
   const [showAlert, setShowAlert] = useState(false);
@@ -49,7 +51,6 @@ function App() {
   const handleSelectItem = (item: string) => {
     console.log(item);
   };
-
   const [expenses, setExpenses] = useState([
     { id: 1, description: "aaa", amount: 10, category: "Utilities" },
     { id: 2, description: "bbb", amount: 10, category: "Utilities" },
@@ -60,10 +61,70 @@ function App() {
   const visibleExpenses = selectedCategory
     ? expenses.filter((e) => e.category === selectedCategory)
     : expenses;
+  ///
+  const { users, error, isLoading, setUsers, setError } = useUsers();
+  const deleteUser = (user: User) => {
+    const originalUsers = [...users];
+    setUsers(users.filter((u) => u.id !== user.id));
+    userService.delete(user.id).catch((err) => {
+      setError(err.message);
+      setUsers(originalUsers);
+    });
+  };
+  const addUser = () => {
+    const originalUsers = [...users];
+    const newUser = { id: 0, name: "peter" };
+    setUsers([newUser, ...users]);
+    userService
+      .create(newUser)
+      .then(({ data: savedUser }) => setUsers([savedUser, ...users]))
+      .catch((err) => {
+        setError(err.message);
+        setUsers(originalUsers);
+      });
+  };
+  const updateUser = (user: User) => {
+    const originalUsers = [...users];
+    const updatedUser = { ...user, name: user.name + "!" };
+    setUsers(users.map((u) => (u.id === user.id ? updatedUser : u)));
+    userService.update(updatedUser).catch((err) => {
+      setError(err.message);
+      setUsers(originalUsers);
+    });
+  };
 
   return (
     <>
-      <div className="mb-5">
+      {error && <p className="text-danger">{error}</p>}
+      {isLoading && <div className="spinner-border"></div>}
+      <button className="btn btn-primary mb-3" onClick={addUser}>
+        Add
+      </button>
+      <ul className="list-group">
+        {users.map((user) => (
+          <li
+            key={user.id}
+            className="list-group-item d-flex justify-content-between"
+          >
+            {user.name}
+            <div>
+              <button
+                className="btn btn-outline-secondary mx-1"
+                onClick={() => updateUser(user)}
+              >
+                Update
+              </button>
+              <button
+                className="btn btn-outline-danger"
+                onClick={() => deleteUser(user)}
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {/* <div className="mb-5">
         <ExpenseForm
           onSubmit={(expense) =>
             setExpenses([...expenses, { ...expense, id: expenses.length + 1 }])
@@ -78,7 +139,7 @@ function App() {
       <ExpenseList
         expenses={visibleExpenses}
         onDelete={(id) => setExpenses(expenses.filter((e) => e.id !== id))}
-      />
+      /> */}
       {/* <Form /> */}
       {/* 
        <Button
